@@ -1,0 +1,54 @@
+;JTAG implementation
+
+.program djtag_tdo      ;program name declared
+.side_set 1 opt         ;enable side setting 1 bit but optional not required for every instruction used to control TCK
+
+; Pin assignments:
+; - TCK is side-set pin 0
+; - TDI is OUT pin 0
+; - TDO is IN pin 0
+;
+; Autopush and autopull must be enabled, and the serial frame size is set by
+; configuring the push/pull threshold (32 bits). Shift should be left
+
+; data is captured on the leading edge of each TCK pulse, and
+; transitions on the trailing edge, or some time before the first leading edge.
+    pull                        ; get length-1 and disregard previous OSR state, pull and place into output shift register (OSR)
+    out x, 32       side 0      ; this moves the first 32 bits into X keep TCK low
+loop:
+    out pins, 1     side 0      ; Stall here on empty (sideset proceeds even if instruction stalls, so we stall with TCK low); send 1 bit from OSR to TDI
+    nop             side 1      ; raise TCK
+    in pins, 1      side 1      ; sample TDO; read 1 bit from TDO into ISR, TCK will transition to HIGH after 1 Cycle
+    jmp x-- loop    side 0      ; decrement x and jump back to loop, set TCK to low
+    push            side 0      ; Force the last ISR bits to be pushed to the tx fifo TCK low after execution
+% c-sdk {
+#include "hardware/gpio.h"
+
+static inline void pio_jtag_init(PIO pio, uint sm, uint16_t clkdiv, uint pin_tck, uint pin_tdi, uint pin_tdo) {
+
+    uint prog_offs = pio_add_program(pio, &djtag_tdo_program); // add above pio assembler programm to PIO core; prog_offs will hold starting address
+    pio_sm_config c = djtag_tdo_program_get_default_config(prog_offs); //state machine config created with default settings
+    sm_config_set_out_pins(&c, pin_tdi, 1); //set tdi as output pin in state machine config and 1 pin(1 bit wide)
+    sm_config_set_in_pins(&c, pin_tdo); //set base of input pin TDO in state machine config
+    sm_config_set_sideset_pins(&c, pin_tck); //set TCK as side set pin in state machine config, means TCK is to be toggled by PIO seen above
+
+    //(shift to left, auto push/pull, threshold=nbits)
+    sm_config_set_out_shift(&c, true, true, 8); // shift data out left ( LSB first), auto pull data, threshold shift 8 bits before repulling
+    sm_config_set_in_shift(&c, false, true, 8); // shift data in left (LSB first), auto push data, threshold shift 8 bits in before re pushing
+    sm_config_set_clkdiv_int_frac(&c, clkdiv, 0); //sets state machine clock divider, fractional part is 0 only integer part 
+
+    // TDI, TCK output are low, TDO is input
+    pio_sm_set_pins_with_mask(pio, sm, 0, (1u << pin_tck) | (1u << pin_tdi)); //set TCK and TDI to 0
+    pio_sm_set_pindirs_with_mask(pio, sm, (1u << pin_tck) | (1u << pin_tdi), (1u << pin_tck) | (1u << pin_tdi) | (1u << pin_tdo)); //set TCK, TDI as output, TDO input
+    pio_gpio_init(pio, pin_tdi); //set up function select for GPIO to use output from PIO instance
+    //pio_gpio_init(pio, pin_tdo);
+    pio_gpio_init(pio, pin_tck); //set up function select for GPIO to use output from PIO instance
+
+
+    // jtag is synchronous, so bypass input synchroniser to reduce input delay.
+    hw_set_bits(&pio->input_sync_bypass, 1u << pin_tdo); //disable input synchronization for TDO to reduce delay
+    gpio_set_pulls(pin_tdo, false, true); //TDO is pulled down (default to 0 when not driven)
+    pio_sm_init(pio, sm, prog_offs, &c); // init state machine with start address programm counter and config
+    pio_sm_set_enabled(pio, sm, true); // enable state machine
+}
+%}
