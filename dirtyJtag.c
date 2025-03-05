@@ -109,13 +109,12 @@ buffer_info buffer_infos[n_buffers];
 static uint8_t tx_buf[64];
 
 
-static void print_uint8_t(uint8_t n) {
-        int i;
-        for (i = 8; i >= 0; i--)
-                printf("%d", (n & (1<<i)) >> i);
-        putchar('\n');
+void print_byte_as_bits(char val) {
+  for (int i = 7; 0 <= i; i--) {
+    printf("%c", (val & (1 << i)) ? '1' : '0');
+  }
+  printf("\n");
 }
-
 
 
 
@@ -179,26 +178,59 @@ void read_idcode2(pio_jtag_inst_t* jtag, uint8_t* tx_buf) {
 
 }
 
+void write_TDI(pio_jtag_inst_t* jtag, uint8_t* data, uint8_t len, uint8_t* tx_buf){
 
+    //send all bits except 1, because last bit must be send with leaving state
+    jtag_transfer(jtag, len-1, data, tx_buf);
+
+    //get last bit of data to send (MSB of last byte)
+    unsigned char last_bit = (data[(len-1) >> 3] & (1 << ((len-1) & 0x07)));
+    printf("last_bit: ");
+    print_byte_as_bits(last_bit);
+
+    //for sending last bit and read TDO
+    if (tx_buf)
+    {
+         jtag_set_clk(jtag, 0);
+         jtag_set_tdi(jtag, last_bit);
+         jtag_set_tms(jtag, 1);
+         
+
+         jtag_set_clk(jtag, 1);
+         jtag_set_tdi(jtag, last_bit);
+         jtag_set_tms(jtag, 1);         
+         
+
+         unsigned char last_tdo = jtag_get_tdo(jtag);
+         tx_buf[(len-1) >> 3] |= (last_tdo << ((8 - (len % 8)) & 7)); // add last bit of TDO at correct position to buffer if not multiple of 8
+        
+    }else{
+        // if TDO is not required just send last bit with TMS 1        
+        jtag_strobe(jtag, 1, 1 , last_bit);
+    }
+
+}
 
 
 void direct_transfer(pio_jtag_inst_t* jtag){
 
 
-    jtag_strobe(jtag, 5, 1,0);
-    jtag_strobe(jtag, 1, 0,0);
-    jtag_strobe(jtag, 2, 1,0);
-    jtag_strobe(jtag, 2, 0,0);
-    uint8_t data[] = {0b00001};
-    jtag_transfer(jtag, 5, data, NULL);
-    jtag_strobe(jtag, 3, 1,0);
-    jtag_strobe(jtag, 2, 0,0);
-    uint8_t idcode[] = {0x00,0x00,0x00,0x00};
-    jtag_transfer(jtag, 32, idcode, tx_buf);
+    jtag_strobe(jtag, 5, 1,0); // 5 times TMS high to get to Test-Logic-Reset state
+    jtag_strobe(jtag, 1, 0,0); // move to run-test-idle
+    jtag_strobe(jtag, 2, 1,0); // move to select-IR scann
+    jtag_strobe(jtag, 2, 0,0); // move to shift-IR 
+    uint8_t data[] = {0x01}; //load IDCODE instruction
+    write_TDI(jtag,data, 6, NULL); 
+    jtag_strobe(jtag, 2, 1, 0); // move to select-dr scan
+    jtag_strobe(jtag, 2, 0,0); // move to shift-dr 
+    uint8_t idcode[] = {0x00,0x00,0x00,0x00}; //32 bits to read back 32bit IDCODE on TDO
+    write_TDI(jtag, idcode, 32, tx_buf);
     jtag_strobe(jtag, 2, 1,0);
     printf("IDCODE: 0x%02X%02X%02X%02X\n", reverse_byte(tx_buf[3]), reverse_byte(tx_buf[2]), reverse_byte(tx_buf[1]), reverse_byte(tx_buf[0]));
-
 }
+
+
+
 
 
 
@@ -213,13 +245,9 @@ int main()
 
     sleep_ms(3000);
 
-
-    for (int i = 16; i < 22; ++i)
-    {
-        printf("drive strength of pin %d is %d \n",i,gpio_get_drive_strength(i));
-    }
-
+    
     while (1) {
         direct_transfer(&jtag);
+ 
     }
 }

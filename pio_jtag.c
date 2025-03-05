@@ -49,7 +49,7 @@ static dma_channel_config rx_c;
 
 static void print_uint8_t(uint8_t n) {
         int i;
-        for (i = 8; i >= 0; i--)
+        for (i = 7; i >= 0; i--)
                 printf("%d", (n & (1<<i)) >> i);
         putchar('\n');
 }
@@ -187,7 +187,7 @@ void __time_critical_func(pio_jtag_write_read_blocking)(const pio_jtag_inst_t *j
             //printf("tx_remain %zu, rx_remain %zu \n");
             if (tx_remain && !pio_sm_is_tx_fifo_full(jtag->pio, jtag->sm)) //if tx FIFO not full send 1 byte
             {
-               // printf("sending: 0x%x\n",*bsrc);
+                //printf("sending: 0x%x\n",*bsrc);
                 *txfifo = *bsrc++;
                 
                 --tx_remain;
@@ -200,6 +200,8 @@ void __time_critical_func(pio_jtag_write_read_blocking)(const pio_jtag_inst_t *j
             }
         }
     }
+    printf("rx_last_byte_p: ");
+    print_uint8_t(*rx_last_byte_p);
     last_tdo = !!(*rx_last_byte_p & 1);
     //fix the last byte
     if (last_shift) 
@@ -351,7 +353,7 @@ static uint8_t toggle_bits_in_buffer[4];
 
 void jtag_set_tdi(const pio_jtag_inst_t *jtag, bool value)
 {
-    toggle_bits_out_buffer[0] = value ? 1u << 7 : 0; //set bit 7 for TDI to 1 or 0
+    toggle_bits_out_buffer[0] = value ? 1u << 0 : 0; //set bit 7 (changed to bit 0 for right shift) for TDI to 1 or 0
 }
 
 void jtag_set_clk(const pio_jtag_inst_t *jtag, bool value)
