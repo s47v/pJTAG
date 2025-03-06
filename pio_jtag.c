@@ -99,7 +99,7 @@ void dma_init()
 
 void __time_critical_func(pio_jtag_write_blocking)(const pio_jtag_inst_t *jtag, const uint8_t *bsrc, size_t len) 
 {
-    printf("pio_jtag_write_blocking len:%zu  \n",len);
+   // printf("pio_jtag_write_blocking len:%zu  \n",len);
     size_t byte_length = (len+7 >> 3);
     size_t last_shift = ((byte_length << 3) - len);
     size_t tx_remain = byte_length, rx_remain = last_shift ? byte_length : byte_length+1;
@@ -150,7 +150,7 @@ void __time_critical_func(pio_jtag_write_blocking)(const pio_jtag_inst_t *jtag, 
 void __time_critical_func(pio_jtag_write_read_blocking)(const pio_jtag_inst_t *jtag, const uint8_t *bsrc, uint8_t *bdst,
                                                          size_t len) 
 {
-    printf("pio_jtag_write_read_blocking len:%zd\n", len);
+   // printf("pio_jtag_write_read_blocking len:%zd\n", len);
     size_t byte_length = (len+7 >> 3); //convert bits to transfer to bytes (correctly rounding)
     size_t last_shift = ((byte_length << 3) - len); // how many bits in last byte, require shifting if len not multiple of 8
     size_t tx_remain = byte_length, rx_remain = last_shift ? byte_length : byte_length+1; //bytes to send and receive, if last shift one extra byte to receive needed
@@ -200,8 +200,7 @@ void __time_critical_func(pio_jtag_write_read_blocking)(const pio_jtag_inst_t *j
             }
         }
     }
-    printf("rx_last_byte_p: ");
-    print_uint8_t(*rx_last_byte_p);
+    
     last_tdo = !!(*rx_last_byte_p & 1);
     //fix the last byte
     if (last_shift) 
@@ -212,7 +211,7 @@ void __time_critical_func(pio_jtag_write_read_blocking)(const pio_jtag_inst_t *j
 
 uint8_t __time_critical_func(pio_jtag_write_tms_blocking)(const pio_jtag_inst_t *jtag, bool tdi, bool tms, size_t len)
 {
-    printf("pio_jtag_write_tms_blocking\n");
+    //printf("pio_jtag_write_tms_blocking\n");
     size_t byte_length = (len+7 >> 3); //convert bit to bytes again
     size_t last_shift = ((byte_length << 3) - len); // account for last shift if len not multiple of 8
     size_t tx_remain = byte_length, rx_remain = last_shift ? byte_length : byte_length+1; //bytes to send and receive, if last shift one extra byte to receive needed
@@ -223,7 +222,7 @@ uint8_t __time_critical_func(pio_jtag_write_tms_blocking)(const pio_jtag_inst_t 
     gpio_put(jtag->pin_tms, tms); //set TMS signal high or low 
     //kick off the process by sending the len to the tx pipeline
     *(io_rw_32*)txfifo = len-1;
-    printf("tdi_word %x \n",tdi_word);
+    //printf("tdi_word %x \n",tdi_word);
 #ifdef DMA
     if (byte_length > 4)
     {   
@@ -245,7 +244,7 @@ uint8_t __time_critical_func(pio_jtag_write_tms_blocking)(const pio_jtag_inst_t 
     else
 #endif
     {
-        printf("tx_remain %zd and rx_remain %zd \n",tx_remain,rx_remain);
+        //printf("tx_remain %zd and rx_remain %zd \n",tx_remain,rx_remain);
         while (tx_remain || rx_remain) 
         {
      
@@ -254,14 +253,14 @@ uint8_t __time_critical_func(pio_jtag_write_tms_blocking)(const pio_jtag_inst_t 
             {
                 *txfifo = tdi_word;
                 --tx_remain;
-                printf("send txinfo tx_remain %zd\n",tx_remain);
+              //  printf("send txinfo tx_remain %zd\n",tx_remain);
             }
             //read data from rx FIFO into x
             if (rx_remain && !pio_sm_is_rx_fifo_empty(jtag->pio, jtag->sm)) 
             {
                 x = *rxfifo;
                 --rx_remain;
-                printf("recv rxinfo rx_remain %zd\n",rx_remain);
+                //printf("recv rxinfo rx_remain %zd\n",rx_remain);
             }
         }
     }
@@ -308,10 +307,10 @@ void init_jtag(pio_jtag_inst_t* jtag, uint freq, uint pin_tck, uint pin_tdi, uin
 
 void jtag_set_clk_freq(const pio_jtag_inst_t *jtag, uint freq_khz) {
     uint clk_sys_freq_khz = clock_get_hz(clk_sys) / 1000; //get sys clk in Hz and convert to kHz
-    printf("System Clock Frequency %u kHz (%u MHz)",clk_sys_freq_khz, clk_sys_freq_khz / 1000);
+    //printf("System Clock Frequency %u kHz (%u MHz)",clk_sys_freq_khz, clk_sys_freq_khz / 1000);
     uint32_t divider = (clk_sys_freq_khz / freq_khz) / 4; //
     divider = (divider < 2) ? 2 : divider; //max reliable freq 2
-    printf("CLK divider set freq %u \n",divider);
+   // printf("CLK divider set freq %u \n",divider);
     pio_sm_set_clkdiv_int_frac(pio0, jtag->sm, divider, 0); //set pio state machine clk divider
 
 }
@@ -322,7 +321,7 @@ void jtag_transfer(const pio_jtag_inst_t *jtag, uint32_t length, const uint8_t* 
     /* set tms to low */
     
     jtag_set_tms(jtag, false);
-    printf("set transfer len: %d \n",length);
+    //printf("set transfer len: %d \n",length);
     //printf("first in 0x%x\n",*in);
 
     if (out)
@@ -338,7 +337,7 @@ uint8_t jtag_strobe(const pio_jtag_inst_t *jtag, uint32_t length, bool tms, bool
 {
     //return pio_jtag_write_tms_blocking(jtag, tdi, tms, length);
 
-    printf("jtag_strobe,  tms: %d and tdi: %d for %u CLK cycles\n",tms,tdi,length);
+   // printf("jtag_strobe,  tms: %d and tdi: %d for %u CLK cycles\n",tms,tdi,length);
 
     if (length == 0)
         return jtag_get_tdo(jtag) ? 0xFF : 0x00;
