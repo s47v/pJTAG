@@ -5,12 +5,26 @@
 #include "hardware/pio.h"
 #include "pico/multicore.h"
 #include "pio_jtag.h"
+#include <time.h>
 
-#include "cmd.h"
+#include "pJTAGConfig.h"
 
-#include "dirtyJtagConfig.h"
 
-#include "cmd.h"
+
+uint8_t correct_password[] = {
+                            0xCE,0xFA,0xED,0xFE,0xEF,0xBE,0xFE,0xCA,
+                            0xCE,0xFA,0xED,0xFE,0xEF,0xBE,0xFE,0xCA,
+                            0xCE,0xFA,0xED,0xFE,0xEF,0xBE,0xFE,0xCA,
+                            0xCE,0xFA,0xED,0xFE,0xEF,0xBE,0xFE,0xCA,
+                        };
+
+uint8_t placeholder_password[] = {
+                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+                        };
+
 
 
 unsigned char reverse_byte(unsigned char x)
@@ -53,17 +67,6 @@ unsigned char reverse_byte(unsigned char x)
 }
 
 
-enum CommandIdentifier {
-  CMD_STOP = 0x00,
-  CMD_INFO = 0x01,
-  CMD_FREQ = 0x02,
-  CMD_XFER = 0x03,
-  CMD_SETSIG = 0x04,
-  CMD_GETSIG = 0x05,
-  CMD_CLK = 0x06,
-  CMD_SETVOLTAGE = 0x07,
-  CMD_GOTOBOOTLOADER = 0x08
-};
 
 
 //#define MULTICORE
@@ -93,19 +96,6 @@ void djtag_init()
     init_pins();
     init_jtag(&jtag, 1000, PIN_TCK, PIN_TDI, PIN_TDO, PIN_TMS, PIN_RST, PIN_TRST);
 }
-typedef uint8_t cmd_buffer[64];
-static uint wr_buffer_number = 0;
-static uint rd_buffer_number = 0; 
-typedef struct buffer_info
-{
-    volatile uint8_t count;
-    volatile uint8_t busy;
-    cmd_buffer buffer;
-} buffer_info;
-
-#define n_buffers (4)
-
-buffer_info buffer_infos[n_buffers];
 
 static uint8_t tx_buf[64];
 
@@ -154,7 +144,7 @@ void write_TDI(pio_jtag_inst_t* jtag, uint8_t* data, uint32_t len, uint8_t* tx_b
 }
 
 
-void get_idcode(pio_jtag_inst_t* jtag){
+uint32_t get_idcode(pio_jtag_inst_t* jtag){
 
 
     jtag_strobe(jtag, 5, 1, 0); // 5 times TMS high to get to Test-Logic-Reset state
@@ -173,10 +163,13 @@ void get_idcode(pio_jtag_inst_t* jtag){
     uint32_t id = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24);
     printf("IDCODE: 0x%x\n", id);
 
+    return id;
 }
 
 
-void transfer_password(pio_jtag_inst_t* jtag){
+
+
+void transfer_password(pio_jtag_inst_t* jtag, uint8_t* password){
 
     //Select jtag password register
     jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
@@ -190,17 +183,11 @@ void transfer_password(pio_jtag_inst_t* jtag){
     //send 256 bit password
     jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
     jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
-    uint8_t password[] = {  0xCE,0xFA,0xED,0xFE,0xEF,0xBE,0xFE,0xCA,
-                            0xCE,0xFA,0xED,0xFE,0xEF,0xBE,0xFE,0xCA,
-                            0xCE,0xFA,0xED,0xFE,0xEF,0xBE,0xFE,0xCA,
-                            0xCE,0xFA,0xED,0xFE,0xEF,0xBE,0xFE,0xCA,
-                        };
-
     write_TDI(jtag, password, 256, NULL);
     jtag_strobe(jtag, 1, 1, 0);
     jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
 
-
+    
     //select bypass register
     jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
     jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
@@ -222,16 +209,16 @@ void transfer_password(pio_jtag_inst_t* jtag){
     jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
 
 
-
-
+    
     jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
     jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
     uint8_t check[] = {0x7E,0x0}; // 
     write_TDI(jtag, check, 10, tx_buf); 
     uint32_t tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
-    printf("First check returned on TDO: 0x%x\n", tdo_val);
+    printf("0x07E check returned on TDO: 0x%x\n", tdo_val);
     jtag_strobe(jtag, 1, 1, 0);
     jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
 
 
 
@@ -269,7 +256,7 @@ void transfer_password(pio_jtag_inst_t* jtag){
 
 
 
-    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
+    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scan
     jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
     uint8_t last[] = {0x31,0x2}; // 
     write_TDI(jtag, last, 10, tx_buf); 
@@ -278,8 +265,134 @@ void transfer_password(pio_jtag_inst_t* jtag){
     jtag_strobe(jtag, 1, 1, 0);
     jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
 
+    //password check finished
 
 
+
+
+
+    /*
+    Part of official UDE Debugger but seems not to be necessary
+
+    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
+    uint8_t clear[] = {0x0,0x0,0x0,0x0};
+    write_TDI(jtag, clear, 32, tx_buf);
+    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
+    jtag_strobe(jtag, 1, 1, 0);
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+
+
+    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
+    uint8_t bypass2[] = {0x31,0x0}; // bypass instruction
+    write_TDI(jtag, bypass2, 10, tx_buf); 
+    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
+    printf("Bypass returned on TDO: 0x%x\n",tdo_val);
+    jtag_strobe(jtag, 1, 1, 0);
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+
+    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
+    uint8_t clear2[] = {0x1,0x0,0x0,0x80};
+    write_TDI(jtag, clear2, 32, tx_buf);
+    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
+    jtag_strobe(jtag, 1, 1, 0);
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+
+
+    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
+    uint8_t reset[] = {0x2E,0x2}; // bypass instruction
+    write_TDI(jtag, reset, 10, tx_buf); 
+    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
+    printf("0x22E returned on TDO: 0x%x\n",tdo_val);
+    jtag_strobe(jtag, 1, 1, 0);
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+
+    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
+    write_TDI(jtag, clear, 32, tx_buf);
+    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
+    jtag_strobe(jtag, 1, 1, 0);
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+
+
+    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
+    uint8_t reset2[] = {0x2E,0x0}; // bypass instruction
+    write_TDI(jtag, reset2, 10, tx_buf); 
+    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
+    printf("0x02E returned on TDO: 0x%x\n",tdo_val);
+    jtag_strobe(jtag, 1, 1, 0);
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+
+    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
+    uint8_t clear3[] = {0x0,0x0,0x0,0xC1};
+    write_TDI(jtag, clear3, 32, tx_buf);
+    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
+    jtag_strobe(jtag, 1, 1, 0);
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+
+    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
+    uint8_t reset3[] = {0x3C,0x2}; // bypass instruction
+    write_TDI(jtag, reset3, 10, tx_buf); 
+    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
+    printf("0x23C returned on TDO: 0x%x\n",tdo_val);
+    jtag_strobe(jtag, 1, 1, 0);
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+
+
+    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
+    write_TDI(jtag, clear, 32, tx_buf);
+    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
+    jtag_strobe(jtag, 1, 1, 0);
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+
+    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
+    uint8_t reset4[] = {0xFF,0x3}; // bypass instruction
+    write_TDI(jtag, reset4, 10, tx_buf); 
+    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
+    printf("0x3FF returned on TDO: 0x%x\n",tdo_val);
+    jtag_strobe(jtag, 1, 0, 0);//to PAUSE-DR state
+    jtag_strobe(jtag, 2, 1, 0);//to Update-DR state
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+    */
+
+
+
+
+    //Access E200 Core 0
+    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
+    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
+    uint8_t core0[] = {0x21}; // bypass instruction
+    write_TDI(jtag, core0, 6, tx_buf); 
+    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
+    printf("Access E200 Core 0 returned on TDO: 0x%x\n",tdo_val);
+    jtag_strobe(jtag, 2, 1, 0);
+
+    //move through PAUSE-DR to transfer control back to JTAGC controller
+    jtag_strobe(jtag, 1, 0, 0); //capture-dr
+    jtag_strobe(jtag, 1, 1, 0); //exit1-dr
+    jtag_strobe(jtag, 1, 0, 0); //pause-dr
+    jtag_strobe(jtag, 2, 1, 0); //update-dr
+    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
+
+    
 }
 
 
@@ -298,14 +411,21 @@ int main()
 
     sleep_ms(3000);
 
-    int i = 0;
-    while (i < 1) {
-        get_idcode(&jtag);
-        transfer_password(&jtag);
 
+    
+
+    int i = 0;
+
+    while (i < 10000) {
+        uint32_t idcode = get_idcode(&jtag);
+
+        if(idcode == 0x10142041)
+        transfer_password(&jtag,correct_password);
         i++;
     
     }
+
+
 
     
 

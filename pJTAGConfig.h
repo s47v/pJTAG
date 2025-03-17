@@ -1,9 +1,5 @@
-#ifndef DirtyJtagConfig_h
-#define DirtyJtagConfig_h
-
-
-
-
+#ifndef pJTAGConfig_h
+#define pJTAGConfig_h
 
 
 #define PIN_TDI 17 //changed TDI,TDO; TDI not working on GPIO 16
@@ -14,4 +10,4 @@
 #define PIN_TRST 21
 
 
-#endif // DirtyJtagConfig_h
+#endif // pJTAGConfig_h
