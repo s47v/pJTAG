@@ -27,6 +27,7 @@ uint8_t placeholder_password[] = {
 
 
 
+//lookup table to quickly reverse bytes
 unsigned char reverse_byte(unsigned char x)
 {
     static const unsigned char table[] = {
@@ -92,7 +93,6 @@ void jtag_task()
 
 void djtag_init()
 {
-    printf("djtag_init\n");
     init_pins();
     init_jtag(&jtag, 1000, PIN_TCK, PIN_TDI, PIN_TDO, PIN_TMS, PIN_RST, PIN_TRST);
 }
@@ -269,113 +269,6 @@ void transfer_password(pio_jtag_inst_t* jtag, uint8_t* password){
 
 
 
-
-
-    /*
-    Part of official UDE Debugger but seems not to be necessary
-
-    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
-    uint8_t clear[] = {0x0,0x0,0x0,0x0};
-    write_TDI(jtag, clear, 32, tx_buf);
-    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
-    jtag_strobe(jtag, 1, 1, 0);
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-
-
-    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
-    uint8_t bypass2[] = {0x31,0x0}; // bypass instruction
-    write_TDI(jtag, bypass2, 10, tx_buf); 
-    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
-    printf("Bypass returned on TDO: 0x%x\n",tdo_val);
-    jtag_strobe(jtag, 1, 1, 0);
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-
-    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
-    uint8_t clear2[] = {0x1,0x0,0x0,0x80};
-    write_TDI(jtag, clear2, 32, tx_buf);
-    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
-    jtag_strobe(jtag, 1, 1, 0);
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-
-
-    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
-    uint8_t reset[] = {0x2E,0x2}; // bypass instruction
-    write_TDI(jtag, reset, 10, tx_buf); 
-    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
-    printf("0x22E returned on TDO: 0x%x\n",tdo_val);
-    jtag_strobe(jtag, 1, 1, 0);
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-
-    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
-    write_TDI(jtag, clear, 32, tx_buf);
-    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
-    jtag_strobe(jtag, 1, 1, 0);
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-
-
-    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
-    uint8_t reset2[] = {0x2E,0x0}; // bypass instruction
-    write_TDI(jtag, reset2, 10, tx_buf); 
-    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
-    printf("0x02E returned on TDO: 0x%x\n",tdo_val);
-    jtag_strobe(jtag, 1, 1, 0);
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-
-    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
-    uint8_t clear3[] = {0x0,0x0,0x0,0xC1};
-    write_TDI(jtag, clear3, 32, tx_buf);
-    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
-    jtag_strobe(jtag, 1, 1, 0);
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-
-    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
-    uint8_t reset3[] = {0x3C,0x2}; // bypass instruction
-    write_TDI(jtag, reset3, 10, tx_buf); 
-    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
-    printf("0x23C returned on TDO: 0x%x\n",tdo_val);
-    jtag_strobe(jtag, 1, 1, 0);
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-
-
-    jtag_strobe(jtag, 1, 1, 0); // move to select-dr scan
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-dr state
-    write_TDI(jtag, clear, 32, tx_buf);
-    printf("clear returned on TDO: 0x%x\n",(reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8) | (reverse_byte(tx_buf[2]) << 16) | (reverse_byte(tx_buf[3]) << 24)));
-    jtag_strobe(jtag, 1, 1, 0);
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-
-    jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
-    jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
-    uint8_t reset4[] = {0xFF,0x3}; // bypass instruction
-    write_TDI(jtag, reset4, 10, tx_buf); 
-    tdo_val = reverse_byte(tx_buf[0])| (reverse_byte(tx_buf[1]) << 8);
-    printf("0x3FF returned on TDO: 0x%x\n",tdo_val);
-    jtag_strobe(jtag, 1, 0, 0);//to PAUSE-DR state
-    jtag_strobe(jtag, 2, 1, 0);//to Update-DR state
-    jtag_strobe(jtag, 1, 0, 0); // move to run test idle state
-
-    */
-
-
-
-
     //Access E200 Core 0
     jtag_strobe(jtag, 2, 1, 0); // move to select-IR scann
     jtag_strobe(jtag, 2, 0, 0); // move to shift-IR 
@@ -402,7 +295,6 @@ void transfer_password(pio_jtag_inst_t* jtag, uint8_t* password){
 
 int main()
 {
-    //board_init(); //basic initialization  led, button, uart and USB for TinyUSB
     stdio_init_all();
 
     

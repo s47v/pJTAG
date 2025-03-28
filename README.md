@@ -4,8 +4,8 @@ This code allows the Pico to send the correct JTAG sequence to transfer and unlo
 
 | Pin name | GPIO   | Pico Pin Number |
 |:---------|:-------| -          |
-| TDI      | GPIO16 | 22         |
-| TDO      | GPIO17 | 21         |
+| TDI      | GPIO17 | 22         |
+| TDO      | GPIO16 | 21         |
 | TCK      | GPIO18 | 24         |
 | TMS      | GPIO19 | 25         |
 | RST      | GPIO20 | 26         |

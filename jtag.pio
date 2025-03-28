@@ -33,7 +33,7 @@ static inline void pio_jtag_init(PIO pio, uint sm, uint16_t clkdiv, uint pin_tck
     sm_config_set_sideset_pins(&c, pin_tck); //set TCK as side set pin in state machine config, means TCK is to be toggled by PIO seen above
 
     //(shift to left, auto push/pull, threshold=nbits)
-    sm_config_set_out_shift(&c, true, true, 8); // shift data out left ( LSB first), auto pull data, threshold shift 8 bits before repulling
+    sm_config_set_out_shift(&c, true, true, 8); // shift data out right ( MSB first), auto pull data, threshold shift 8 bits before repulling
     sm_config_set_in_shift(&c, false, true, 8); // shift data in left (LSB first), auto push data, threshold shift 8 bits in before re pushing
     sm_config_set_clkdiv_int_frac(&c, clkdiv, 0); //sets state machine clock divider, fractional part is 0 only integer part 
 
