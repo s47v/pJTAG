@@ -1,6 +1,6 @@
 # Generated Cmake Pico project file
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.6)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -29,6 +29,7 @@ add_executable(pJTAG
 target_include_directories(pJTAG PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 pico_generate_pio_header(pJTAG ${CMAKE_CURRENT_LIST_DIR}/jtag.pio)
+pico_generate_pio_header(pJTAG ${CMAKE_CURRENT_LIST_DIR}/glitch.pio)
 
 pico_set_program_name(pJTAG "pJTAG")
 pico_set_program_version(pJTAG "0.1")
@@ -44,6 +45,7 @@ target_link_libraries(pJTAG PRIVATE
     hardware_pio
 	hardware_dma
 	pico_unique_id
+	pico_rand
 )
 
 pico_add_extra_outputs(pJTAG)

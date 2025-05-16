@@ -41,7 +41,7 @@ static inline void pio_jtag_init(PIO pio, uint sm, uint16_t clkdiv, uint pin_tck
     pio_sm_set_pins_with_mask(pio, sm, 0, (1u << pin_tck) | (1u << pin_tdi)); //set TCK and TDI to 0
     pio_sm_set_pindirs_with_mask(pio, sm, (1u << pin_tck) | (1u << pin_tdi), (1u << pin_tck) | (1u << pin_tdi) | (1u << pin_tdo)); //set TCK, TDI as output, TDO input
     pio_gpio_init(pio, pin_tdi); //set up function select for GPIO to use output from PIO instance
-    //pio_gpio_init(pio, pin_tdo);
+    pio_gpio_init(pio, pin_tdo);
     pio_gpio_init(pio, pin_tck); //set up function select for GPIO to use output from PIO instance
 
 

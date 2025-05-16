@@ -1,0 +1,32 @@
+;glitch
+
+.program glitch_ctrl      ;program name declared
+ 
+    pull 		    		 ; Clear FIFO 
+    mov x, osr       ; Load delay count from OSR (set by CPU)
+
+delay_loop:
+		nop 
+ 	 	jmp x-- delay_loop 
+
+    pull 
+    mov y, osr
+    
+    set pins, 1 
+glitch_length:		
+		nop 
+    jmp y-- glitch_length
+		set pins, 0
+
+
+
+% c-sdk {
+
+static inline void glitch_ctrl_program_init(PIO pio, uint sm, uint offset, uint pin) {
+  pio_gpio_init(pio, pin);
+   pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+   pio_sm_config c = glitch_ctrl_program_get_default_config(offset);
+   sm_config_set_set_pins(&c, pin, 1);
+   pio_sm_init(pio, sm, offset, &c);
+}
+%}
