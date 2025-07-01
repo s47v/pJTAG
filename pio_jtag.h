@@ -13,10 +13,11 @@ typedef struct pio_jtag_inst {
     uint pin_tms;
     uint pin_rst;
     uint pin_trst;
+    uint pin_porst;
 } pio_jtag_inst_t;
 
 
-void init_jtag(pio_jtag_inst_t* jtag, uint freq, uint pin_tck, uint pin_tdi, uint pin_tdo, uint pin_tms, uint pin_rst, uint pin_trst);
+void init_jtag(pio_jtag_inst_t* jtag, uint freq, uint pin_tck, uint pin_tdi, uint pin_tdo, uint pin_tms, uint pin_rst, uint pin_trst, uint pin_porst);
 
 void pio_jtag_write_blocking(const pio_jtag_inst_t *jtag, const uint8_t *src, size_t len);
 
@@ -39,6 +40,12 @@ static inline void jtag_set_rst(const pio_jtag_inst_t *jtag, bool value)
 {
     /* Change the direction to out to drive pin to 0 or to in to emulate open drain */
     gpio_set_dir(jtag->pin_rst, !value);
+}
+
+static inline void jtag_set_porst(const pio_jtag_inst_t *jtag, bool value)
+{
+    /* Change the direction to out to drive pin to 0 or to in to emulate open drain */
+    gpio_set_dir(jtag->pin_porst, !value);
 }
 static inline void jtag_set_trst(const pio_jtag_inst_t *jtag, bool value)
 {

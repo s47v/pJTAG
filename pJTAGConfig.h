@@ -8,6 +8,7 @@
 #define PIN_TMS 19
 #define PIN_RST 20
 #define PIN_TRST 21
+#define PIN_PORST 22
 
 
 #endif // pJTAGConfig_h

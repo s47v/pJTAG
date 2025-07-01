@@ -266,30 +266,33 @@ uint8_t __time_critical_func(pio_jtag_write_tms_blocking)(const pio_jtag_inst_t 
     return last_tdo ? 0xFF : 0x00;
 }
 
-static void init_pins(uint pin_tck, uint pin_tdi, uint pin_tdo, uint pin_tms, uint pin_rst, uint pin_trst)
+static void init_pins(uint pin_tck, uint pin_tdi, uint pin_tdo, uint pin_tms, uint pin_rst, uint pin_trst, uint pin_porst)
 {
     
     
     
 
-    gpio_clr_mask((1u << pin_tms) | (1u << pin_rst) | (1u << pin_trst)); // clear output values to 0 for TMS,RST,TRST
-    gpio_init_mask((1u << pin_tms) | (1u << pin_rst) | (1u << pin_trst)); // initliaze pins to use
+    gpio_clr_mask((1u << pin_tms) | (1u << pin_rst) | (1u << pin_trst) | (1u << pin_porst)); // clear output values to 0 for TMS,RST,TRST
+    gpio_init_mask((1u << pin_tms) | (1u << pin_rst) | (1u << pin_trst) | (1u << pin_porst)); // initliaze pins to use
     gpio_set_dir_masked( (1u << pin_tms) | (1u << pin_trst), 0xffffffffu); // set TMS and TRST as outputs
     gpio_set_dir(pin_rst, false); // set rst input
+    gpio_set_dir(pin_porst, false); // set porrst input
 
     gpio_set_drive_strength(pin_trst,3);
     gpio_set_drive_strength(pin_rst,3);
+    gpio_set_drive_strength(pin_porst,3);
    
     gpio_put(pin_trst,1); //keep TRST high
     //gpio_put(pin_rst,1); //keep TRST high
     gpio_pull_up(pin_rst); // default RST pin to High unless actively driven low
+    gpio_pull_up(pin_porst); // default RST pin to High unless actively driven low
 
 
 }
 
-void init_jtag(pio_jtag_inst_t* jtag, uint freq, uint pin_tck, uint pin_tdi, uint pin_tdo, uint pin_tms, uint pin_rst, uint pin_trst)
+void init_jtag(pio_jtag_inst_t* jtag, uint freq, uint pin_tck, uint pin_tdi, uint pin_tdo, uint pin_tms, uint pin_rst, uint pin_trst, uint pin_porst)
 {
-    init_pins(pin_tck, pin_tdi, pin_tdo, pin_tms, pin_rst, pin_trst);
+    init_pins(pin_tck, pin_tdi, pin_tdo, pin_tms, pin_rst, pin_trst, pin_porst);
     jtag->pin_tdi = pin_tdi;
     jtag->pin_tdo = pin_tdo;
     jtag->pin_tck = pin_tck;
@@ -297,6 +300,7 @@ void init_jtag(pio_jtag_inst_t* jtag, uint freq, uint pin_tck, uint pin_tdi, uin
 
     jtag->pin_rst = pin_rst;
     jtag->pin_trst = pin_trst;
+    jtag->pin_porst = pin_porst;
     uint16_t clkdiv = 30;  // around 1 MHz @ 125MHz clk_sys
     pio_jtag_init(jtag->pio, jtag->sm,
                     clkdiv,

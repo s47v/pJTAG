@@ -8,15 +8,16 @@
 delay_loop:
 		nop 
  	 	jmp x-- delay_loop 
-
+    nop
+    set pins, 1 							
     pull 
     mov y, osr
-    
-    set pins, 1 
 glitch_length:		
-		nop 
+		nop
     jmp y-- glitch_length
-		set pins, 0
+
+    nop
+    set pins, 0 						 
 
 
 
