@@ -599,12 +599,12 @@ int main()
 
     sleep_ms(3000);
 
-
     printf("Waiting on arguments...\n");
     parse_arguments();
 
 
     long long i = 0;
+
     while(1){
         reset_to_idle(&jtag);
   
@@ -612,13 +612,6 @@ int main()
 
         
         if(idcode == 0x10142041){
-            //44 before reset?
-            //glitch_delay = get_rand_32() % 2171;
-            //glitch_length = get_rand_32() % (61) + 20;
-            //glitch_length = get_rand_32() % (8) + 50;
-
-            //glitch_length = get_rand_32() % (14) + 35;
-
             //standard parameters if no given
             if (min_glitch_length == -1 && max_glitch_length == -1){
                 min_glitch_length = 20;
@@ -668,19 +661,9 @@ int main()
             glitch_delay = get_rand_32() % (max_glitch_delay - min_glitch_delay + 1) + min_glitch_delay;
 
 
-            // max for MPC 2650 70?
-            //glitch_delay = get_rand_32() % 2650;
-            //glitch_length = get_rand_32() % (51) + 20;
-
 
             printf("Try %lld glitch_delay %d, glitch_length %d \n", i, glitch_delay,glitch_length);
            
-
-            /*
-            uint8_t flipped[32];
-            random_bit_flip(placeholder_password,flipped);
-            */
-
 
 
             uint8_t *pw = placeholder_password_mpc;

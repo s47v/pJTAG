@@ -14,6 +14,17 @@ This code is based on the [pico-dirtyJtag](https://github.com/phdussud/pico-dirt
 | Glitch   | GPIO14 | 19 		      |
 
 
+## Building pJTAG
+Requires Raspberry Pi Pico SDK
+
+```
+mkdir -p build
+cd build
+cmake ..
+make
+```
+Upload pJTAG.uf2 to your Pico
+
 
 ## Usage
 To start glitch attempts use `run.py`, to send optional arguments and log output of Pico.

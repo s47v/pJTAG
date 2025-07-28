@@ -283,7 +283,7 @@ static void init_pins(uint pin_tck, uint pin_tdi, uint pin_tdo, uint pin_tms, ui
     gpio_set_drive_strength(pin_porst,3);
    
     gpio_put(pin_trst,1); //keep TRST high
-    //gpio_put(pin_rst,1); //keep TRST high
+    //gpio_put(pin_rst,1); //keep RST high
     gpio_pull_up(pin_rst); // default RST pin to High unless actively driven low
     gpio_pull_up(pin_porst); // default RST pin to High unless actively driven low
 

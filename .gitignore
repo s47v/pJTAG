@@ -1,6 +1,2 @@
 build/
 build2/
-openocd_command
-values
-glitch*.txt
-OnCE commands.txt
